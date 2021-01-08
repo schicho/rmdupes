@@ -72,16 +72,16 @@ func createHasherPool(hasherCount int) {
 }
 
 func hashFileSHA256(filePath string) (string, error) {
-	var sha256Return [] byte
+	var sha256Return string
 	file, err := os.Open(filePath)
 	if err != nil {
-		return base64.URLEncoding.EncodeToString(sha256Return), err
+		return sha256Return, err
 	}
 	defer file.Close()
 
 	hash := sha256.New()
 	if _, err := io.Copy(hash, file); err != nil {
-		return base64.URLEncoding.EncodeToString(sha256Return), err
+		return sha256Return, err
 	}
 	return base64.URLEncoding.EncodeToString(hash.Sum(nil)), nil
 }
