@@ -103,7 +103,7 @@ func main() {
 		switch os.Args[1] {
 		case "--help":
 		case "-h":
-			fmt.Println("Removes all duplicate files in a directory, based on their CRC32 checksum.")
+			fmt.Println("Removes all duplicate files in a directory, based on their SHA256 checksum.")
 			fmt.Println("Usage: rmdupes <path to folder>\nFor the current working directory use '.'")
 			break
 		default:
