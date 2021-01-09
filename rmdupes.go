@@ -1,8 +1,9 @@
 package main
 
 import (
+	"encoding/base64"
 	"fmt"
-	"hash/crc32"
+	"crypto/sha256"
 	"io"
 	"io/ioutil"
 	"log"
@@ -16,7 +17,7 @@ var deletedFilesCount uint32
 
 type fileWithHash struct {
 	filePath string
-	checksum uint32
+	checksum string
 }
 
 func findFiles(pathToFolder string) {
@@ -33,7 +34,7 @@ func findFiles(pathToFolder string) {
 }
 
 func deleter(done chan bool) {
-	var fileMap = map[uint32]string{}
+	var fileMap = map[string]string{}
 	for file := range files {
 		_, ok := fileMap[file.checksum]
 		if !ok { //entry does not exist yet
@@ -51,7 +52,7 @@ func deleter(done chan bool) {
 
 func hasher(wg *sync.WaitGroup) {
 	for filePath := range filePaths {
-		var checksum, err = hashFileCRC32(filePath)
+		var checksum, err = hashFileSHA256(filePath)
 		if err != nil {
 			log.Fatal(err, " Failed hashing: ", filePath)
 		}
@@ -70,19 +71,19 @@ func createHasherPool(hasherCount int) {
 	close(files)
 }
 
-func hashFileCRC32(filePath string) (uint32, error) {
-	var crc32Return uint32
+func hashFileSHA256(filePath string) (string, error) {
+	var sha256Return string
 	file, err := os.Open(filePath)
 	if err != nil {
-		return crc32Return, err
+		return sha256Return, err
 	}
 	defer file.Close()
 
-	hash := crc32.NewIEEE()
+	hash := sha256.New()
 	if _, err := io.Copy(hash, file); err != nil {
-		return crc32Return, err
+		return sha256Return, err
 	}
-	return hash.Sum32(), nil
+	return base64.URLEncoding.EncodeToString(hash.Sum(nil)), nil
 }
 
 func RmDupes(pathToFolder string) {
