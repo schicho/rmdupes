@@ -1,9 +1,9 @@
 package main
 
 import (
+	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
-	"crypto/sha256"
 	"io"
 	"io/ioutil"
 	"log"
@@ -101,8 +101,7 @@ func main() {
 		fmt.Println("No directory given. Please enter directory explicitly.\nOr try: rmdupes --help ")
 	} else {
 		switch os.Args[1] {
-		case "--help":
-		case "-h":
+		case "--help", "-h":
 			fmt.Println("Removes all duplicate files in a directory, based on their SHA256 checksum.")
 			fmt.Println("Usage: rmdupes <path to folder>\nFor the current working directory use '.'")
 			break
