@@ -13,7 +13,6 @@ import (
 
 var filePaths = make(chan string, 50)
 var files = make(chan fileWithHash, 50)
-var deletedFilesCount uint32
 
 type fileWithHash struct {
 	filePath string
@@ -33,18 +32,18 @@ func findFiles(pathToFolder string) {
 	close(filePaths)
 }
 
-func deleter(done chan bool) {
-	var fileMap = map[string]string{}
+func deleter(done chan bool, deletedFilesCount *uint32) {
+	seenFiles := make(map[string]struct{})
 	for file := range files {
-		_, ok := fileMap[file.checksum]
+		_, ok := seenFiles[file.checksum]
 		if !ok { //entry does not exist yet
-			fileMap[file.checksum] = file.filePath
+			seenFiles[file.checksum] = struct{}{}
 		} else {
 			err := os.Remove(file.filePath)
 			if err != nil {
 				log.Fatal(err)
 			}
-			deletedFilesCount++
+			*deletedFilesCount++
 		}
 	}
 	done <- true
@@ -83,13 +82,14 @@ func hashFileSHA256(filePath string) (string, error) {
 	if _, err := io.Copy(hash, file); err != nil {
 		return sha256Return, err
 	}
-	return base64.URLEncoding.EncodeToString(hash.Sum(nil)), nil
+	return base64.StdEncoding.EncodeToString(hash.Sum(nil)), nil
 }
 
 func RmDupes(pathToFolder string) {
+	var deletedFilesCount uint32
 	go findFiles(pathToFolder)
 	done := make(chan bool)
-	go deleter(done)
+	go deleter(done, &deletedFilesCount)
 	hasherCount := 10
 	createHasherPool(hasherCount)
 	<-done
