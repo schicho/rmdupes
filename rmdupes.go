@@ -11,15 +11,12 @@ import (
 	"sync"
 )
 
-var filePaths = make(chan string, 50)
-var files = make(chan fileWithHash, 50)
-
-type fileWithHash struct {
+type fileInfo struct {
 	filePath string
 	checksum string
 }
 
-func findFiles(pathToFolder string) {
+func findFiles(pathToFolder string, filePaths chan string) {
 	fileInfos, err := ioutil.ReadDir(pathToFolder)
 	if err != nil {
 		log.Fatal(err)
@@ -32,7 +29,7 @@ func findFiles(pathToFolder string) {
 	close(filePaths)
 }
 
-func deleter(done chan bool, deletedFilesCount *uint32) {
+func deleter(done chan bool, files chan fileInfo, deletedFilesCount *uint32) {
 	seenFiles := make(map[string]struct{})
 	for file := range files {
 		_, ok := seenFiles[file.checksum]
@@ -49,22 +46,22 @@ func deleter(done chan bool, deletedFilesCount *uint32) {
 	done <- true
 }
 
-func hasher(wg *sync.WaitGroup) {
+func hasher(filePaths chan string, files chan fileInfo, wg *sync.WaitGroup) {
 	for filePath := range filePaths {
 		var checksum, err = hashFileSHA256(filePath)
 		if err != nil {
 			log.Fatal(err, " Failed hashing: ", filePath)
 		}
-		files <- fileWithHash{filePath, checksum}
+		files <- fileInfo{filePath, checksum}
 	}
 	wg.Done()
 }
 
-func createHasherPool(hasherCount int) {
+func createHasherPool(hasherCount int, filePaths chan string, files chan fileInfo) {
 	var wg sync.WaitGroup
 	for i := 0; i < hasherCount; i++ {
 		wg.Add(1)
-		go hasher(&wg)
+		go hasher(filePaths, files, &wg)
 	}
 	wg.Wait()
 	close(files)
@@ -87,11 +84,14 @@ func hashFileSHA256(filePath string) (string, error) {
 
 func RmDupes(pathToFolder string) {
 	var deletedFilesCount uint32
-	go findFiles(pathToFolder)
+	var filePaths = make(chan string, 50)
+	var files = make(chan fileInfo, 50)
+	hasherCount := 20
+
+	go findFiles(pathToFolder, filePaths)
 	done := make(chan bool)
-	go deleter(done, &deletedFilesCount)
-	hasherCount := 10
-	createHasherPool(hasherCount)
+	go deleter(done, files, &deletedFilesCount)
+	createHasherPool(hasherCount, filePaths, files)
 	<-done
 	fmt.Println("Deleted a total of", deletedFilesCount, "files.")
 }
