@@ -84,9 +84,9 @@ func hashFileSHA256(filePath string) (string, error) {
 
 func RmDupes(pathToFolder string) {
 	var deletedFilesCount uint32
-	var filePaths = make(chan string, 50)
-	var files = make(chan fileInfo, 50)
-	hasherCount := 20
+	const hasherCount = 20
+	filePaths := make(chan string, 50)
+	files := make(chan fileInfo, 50)
 
 	go findFiles(pathToFolder, filePaths)
 	done := make(chan bool)
